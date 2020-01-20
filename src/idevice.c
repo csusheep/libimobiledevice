@@ -764,6 +764,7 @@ static void internal_ssl_cleanup(ssl_data_t ssl_data)
 		return;
 
 #ifdef HAVE_OPENSSL
+	debug_info("internal_ssl_cleanup %p", ssl_data);
 	if (ssl_data->session) {
 		SSL_free(ssl_data->session);
 	}
@@ -925,7 +926,8 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connection_enable_ssl(idevice_conne
 		SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_VERSION);
 	}
 #endif
-
+	SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL);
+	SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_VERSION);
 	BIO* membp;
 	X509* rootCert = NULL;
 	membp = BIO_new_mem_buf(root_cert.data, root_cert.size);
@@ -1066,6 +1068,26 @@ LIBIMOBILEDEVICE_API idevice_error_t idevice_connection_disable_ssl(idevice_conn
 	connection->ssl_data = NULL;
 
 	debug_info("SSL mode disabled");
+
+	return IDEVICE_E_SUCCESS;
+}
+
+LIBIMOBILEDEVICE_API idevice_error_t idevice_connection_disable_ssl_silently(idevice_connection_t connection)
+{
+	if (!connection)
+		return IDEVICE_E_INVALID_ARG;
+	if (!connection->ssl_data) {
+		/* ignore if ssl is not enabled */
+		return IDEVICE_E_SUCCESS;
+	}
+
+	/* do it silently, no byes here */
+
+	internal_ssl_cleanup(connection->ssl_data);
+	free(connection->ssl_data);
+	connection->ssl_data = NULL;
+
+	debug_info("SSL mode disabled silently");
 
 	return IDEVICE_E_SUCCESS;
 }

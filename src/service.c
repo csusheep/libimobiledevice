@@ -193,3 +193,9 @@ LIBIMOBILEDEVICE_API service_error_t service_disable_ssl(service_client_t client
 	return idevice_to_service_error(idevice_connection_disable_ssl(client->connection));
 }
 
+LIBIMOBILEDEVICE_API service_error_t service_disable_ssl_silently(service_client_t client)
+{
+	if (!client || !client->connection)
+		return SERVICE_E_INVALID_ARG;
+	return idevice_to_service_error(idevice_connection_disable_ssl_silently(client->connection));
+}

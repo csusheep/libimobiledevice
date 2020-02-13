@@ -91,6 +91,6 @@ idevicecrashreport_LDFLAGS = $(top_builddir)/common/libinternalcommon.la $(AM_LD
 idevicecrashreport_LDADD = $(top_builddir)/src/libimobiledevice.la
 
 ideviceinstrumentchannels_SOURCES = ideviceinstrumentchannels.c
-ideviceinstrumentchannels_CFLAGS = -I$(top_srcdir) $(AM_CFLAGS) -gstabs
-ideviceinstrumentchannels_LDFLAGS = $(top_builddir)/common/libinternalcommon.la $(AM_LDFLAGS) -gstabs
+ideviceinstrumentchannels_CFLAGS = -I$(top_srcdir) $(AM_CFLAGS) 
+ideviceinstrumentchannels_LDFLAGS = $(top_builddir)/common/libinternalcommon.la $(AM_LDFLAGS)
 ideviceinstrumentchannels_LDADD = $(top_builddir)/src/libimobiledevice.la

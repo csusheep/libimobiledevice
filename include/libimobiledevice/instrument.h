@@ -138,6 +138,8 @@ instrument_error_t instrument_receive_with_timeout(instrument_client_t client, c
  */
 instrument_error_t instrument_receive(instrument_client_t client, char *data, uint32_t size, uint32_t *received);
 
+void libimobiledevice_free(void* ptr);
+
 #ifdef __cplusplus
 }
 #endif

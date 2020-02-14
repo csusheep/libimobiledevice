@@ -121,3 +121,7 @@ LIBIMOBILEDEVICE_API instrument_error_t instrument_receive(instrument_client_t c
     instrument_error_t err = instrument_error(service_receive(client->parent, data, size, received));
     return err;
 }
+
+LIBIMOBILEDEVICE_API void libimobiledevice_free(void* ptr){
+    free(ptr);
+}

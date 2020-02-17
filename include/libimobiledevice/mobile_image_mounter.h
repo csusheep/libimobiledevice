@@ -128,6 +128,8 @@ mobile_image_mounter_error_t mobile_image_mounter_lookup_image(mobile_image_moun
  */
 mobile_image_mounter_error_t mobile_image_mounter_upload_image(mobile_image_mounter_client_t client, const char *image_type, size_t image_size, const char *signature, uint16_t signature_size, mobile_image_mounter_upload_cb_t upload_cb, void* userdata);
 
+mobile_image_mounter_error_t mobile_image_mounter_upload_image_file(mobile_image_mounter_client_t client, const char *image_type, const char* image_file_path, const char *signature_file_path);
+
 /**
  * Mounts an image on the device.
  *
@@ -150,6 +152,8 @@ mobile_image_mounter_error_t mobile_image_mounter_upload_image(mobile_image_moun
  *    invalid, or another error code otherwise.
  */
 mobile_image_mounter_error_t mobile_image_mounter_mount_image(mobile_image_mounter_client_t client, const char *image_path, const char *signature, uint16_t signature_size, const char *image_type, plist_t *result);
+
+mobile_image_mounter_error_t mobile_image_mounter_mount_image_file(mobile_image_mounter_client_t client, const char *image_path, const char *signature_file, const char *image_type, plist_t *result);
 
 /**
  * Hangs up the connection to the mobile_image_mounter service.

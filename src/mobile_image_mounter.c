@@ -181,6 +181,43 @@ static mobile_image_mounter_error_t process_result(plist_t result, const char *e
 	return res;
 }
 
+static ssize_t mim_upload_cb(void* buf, size_t size, void* userdata)
+{
+	return fread(buf, 1, size, (FILE*)userdata);
+}
+
+LIBIMOBILEDEVICE_API mobile_image_mounter_error_t mobile_image_mounter_upload_image_file(mobile_image_mounter_client_t client, const char *image_type, const char* image_file_path, const char* image_signature_file_path)
+{
+	struct stat fst;
+	if (stat(image_file_path, &fst) != 0) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+	size_t image_size = fst.st_size;
+
+	char sig[8192];
+	size_t sig_length = 0;
+	FILE *f = fopen(image_signature_file_path, "rb");
+	if (!f) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+	sig_length = fread(sig, 1, sizeof(sig), f);
+	fclose(f);
+	if (sig_length == 0) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+
+	f = fopen(image_file_path, "rb");
+	if (!f) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+
+	mobile_image_mounter_error_t res = mobile_image_mounter_upload_image(client, image_type, image_size, sig, sig_length, mim_upload_cb, f);
+	fclose(f);
+
+	return res;
+}
+
+
 LIBIMOBILEDEVICE_API mobile_image_mounter_error_t mobile_image_mounter_upload_image(mobile_image_mounter_client_t client, const char *image_type, size_t image_size, const char *signature, uint16_t signature_size, mobile_image_mounter_upload_cb_t upload_cb, void* userdata)
 {
 	if (!client || !image_type || (image_size == 0) || !upload_cb) {
@@ -259,6 +296,24 @@ leave_unlock:
 	return res;
 
 }
+
+LIBIMOBILEDEVICE_API mobile_image_mounter_error_t mobile_image_mounter_mount_image_file(mobile_image_mounter_client_t client, const char *image_path, const char *signature_file, const char *image_type, plist_t *result)
+{
+	char sig[8192];
+	size_t sig_length = 0;
+	FILE *f = fopen(signature_file, "rb");
+	if (!f) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+	sig_length = fread(sig, 1, sizeof(sig), f);
+	fclose(f);
+	if (sig_length == 0) {
+		return MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR;
+	}
+
+	return mobile_image_mounter_mount_image(client, image_path, sig, sig_length, image_type, result);
+}
+
 
 LIBIMOBILEDEVICE_API mobile_image_mounter_error_t mobile_image_mounter_mount_image(mobile_image_mounter_client_t client, const char *image_path, const char *signature, uint16_t signature_size, const char *image_type, plist_t *result)
 {

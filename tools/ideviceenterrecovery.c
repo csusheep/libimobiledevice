@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#define TOOL_NAME "ideviceenterrecovery"
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -40,11 +42,16 @@ static void print_usage(int argc, char **argv)
 
 	name = strrchr(argv[0], '/');
 	printf("Usage: %s [OPTIONS] UDID\n", (name ? name + 1: argv[0]));
-	printf("Makes a device with the supplied UDID enter recovery mode immediately.\n\n");
+	printf("\n");
+	printf("Makes a device with the supplied UDID enter recovery mode immediately.\n");
+	printf("\n");
+	printf("OPTIONS:\n");
 	printf("  -d, --debug\t\tenable communication debugging\n");
 	printf("  -h, --help\t\tprints usage information\n");
+	printf("  -v, --version\t\tprints version information\n");
 	printf("\n");
-	printf("Homepage: <" PACKAGE_URL ">\n");
+	printf("Homepage:    <" PACKAGE_URL ">\n");
+	printf("Bug Reports: <" PACKAGE_BUGREPORT ">\n");
 }
 
 int main(int argc, char *argv[])
@@ -69,6 +76,10 @@ int main(int argc, char *argv[])
 			print_usage(argc, argv);
 			return 0;
 		}
+		else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--version")) {
+			printf("%s %s\n", TOOL_NAME, PACKAGE_VERSION);
+			return 0;
+		}
 	}
 
 	i--;
@@ -80,26 +91,38 @@ int main(int argc, char *argv[])
 
 	ret = idevice_new(&device, udid);
 	if (ret != IDEVICE_E_SUCCESS) {
-		printf("No device found with udid %s, is it plugged in?\n", udid);
-		return -1;
+		printf("No device found with udid %s.\n", udid);
+		return 1;
 	}
 
-	if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new(device, &client, "ideviceenterrecovery"))) {
-		printf("ERROR: Could not connect to lockdownd, error code %d\n", ldret);
+	if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new(device, &client, TOOL_NAME))) {
+		printf("ERROR: Could not connect to lockdownd: %s (%d)\n", lockdownd_strerror(ldret), ldret);
 		idevice_free(device);
-		return -1;
+		return 1;
 	}
 
-	/* run query and output information */
+	int res = 0;
 	printf("Telling device with udid %s to enter recovery mode.\n", udid);
-	if(lockdownd_enter_recovery(client) != LOCKDOWN_E_SUCCESS)
-	{
-		printf("Failed to enter recovery mode.\n");
+	ldret = lockdownd_enter_recovery(client);
+	if (ldret == LOCKDOWN_E_SESSION_INACTIVE) {
+		lockdownd_client_free(client);
+		client = NULL;
+		if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new_with_handshake(device, &client, TOOL_NAME))) {
+			printf("ERROR: Could not connect to lockdownd: %s (%d)\n", lockdownd_strerror(ldret), ldret);
+			idevice_free(device);
+			return 1;
+		}
+		ldret = lockdownd_enter_recovery(client);
 	}
-	printf("Device is successfully switching to recovery mode.\n");
+	if (ldret != LOCKDOWN_E_SUCCESS) {
+		printf("Failed to enter recovery mode.\n");
+		res = 1;
+	} else {
+		printf("Device is successfully switching to recovery mode.\n");
+	}
 
 	lockdownd_client_free(client);
 	idevice_free(device);
 
-	return 0;
+	return res;
 }

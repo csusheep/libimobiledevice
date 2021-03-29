@@ -24,6 +24,8 @@
 #include <config.h>
 #endif
 
+#define TOOL_NAME "ideviceinfo"
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -75,7 +77,7 @@ static const char *domains[] = {
 	NULL
 };
 
-static int is_domain_known(char *domain)
+static int is_domain_known(const char *domain)
 {
 	int i = 0;
 	while (domains[i] != NULL) {
@@ -93,24 +95,29 @@ static void print_usage(int argc, char **argv, int is_error)
 	name = strrchr(argv[0], '/');
 	fprintf(is_error ? stderr : stdout, "Usage: %s [OPTIONS]\n", (name ? name + 1: argv[0]));
 	fprintf(is_error ? stderr : stdout,
-	  "Show information about a connected device.\n\n" \
-	  "  -s, --simple       use a simple connection to avoid auto-pairing with the device\n" \
-	  "  -u, --udid UDID    target specific device by UDID\n" \
-	  "  -n, --network      connect to network device even if available via USB\n" \
-	  "  -q, --domain NAME  set domain of query to NAME. Default: None\n" \
-	  "  -k, --key NAME     only query key specified by NAME. Default: All keys.\n" \
-	  "  -x, --xml          output information as xml plist instead of key/value pairs\n" \
-	  "  -h, --help         prints usage information\n" \
-	  "  -d, --debug        enable communication debugging\n" \
-	  "\n"
+		"\n" \
+		"Show information about a connected device.\n" \
+		"\n" \
+		"OPTIONS:\n" \
+		"  -u, --udid UDID    target specific device by UDID\n" \
+		"  -n, --network      connect to network device\n" \
+		"  -s, --simple       use a simple connection to avoid auto-pairing with the device\n" \
+		"  -q, --domain NAME  set domain of query to NAME. Default: None\n" \
+		"  -k, --key NAME     only query key specified by NAME. Default: All keys.\n" \
+		"  -x, --xml          output information as xml plist instead of key/value pairs\n" \
+		"  -h, --help         prints usage information\n" \
+		"  -d, --debug        enable communication debugging\n" \
+		"  -v, --version      prints version information\n" \
+		"\n"
 	);
-	fprintf(is_error ? stderr : stdout, "  Known domains are:\n\n");
+	fprintf(is_error ? stderr : stdout, "Known domains are:\n\n");
 	while (domains[i] != NULL) {
 		fprintf(is_error ? stderr : stdout, "  %s\n", domains[i++]);
 	}
 	fprintf(is_error ? stderr : stdout,
-	  "\n" \
-	  "Homepage: <" PACKAGE_URL ">\n"
+		"\n" \
+		"Homepage:    <" PACKAGE_URL ">\n"
+		"Bug Reports: <" PACKAGE_BUGREPORT ">\n"
 	);
 }
 
@@ -122,13 +129,13 @@ int main(int argc, char *argv[])
 	idevice_error_t ret = IDEVICE_E_UNKNOWN_ERROR;
 	int simple = 0;
 	int format = FORMAT_KEY_VALUE;
-	char* udid = NULL;
-	char *domain = NULL;
-	char *key = NULL;
+	const char* udid = NULL;
+	int use_network = 0;
+	const char *domain = NULL;
+	const char *key = NULL;
 	char *xml_doc = NULL;
 	uint32_t xml_length;
 	plist_t node = NULL;
-	enum idevice_options lookup_opts = IDEVICE_LOOKUP_USBMUX | IDEVICE_LOOKUP_NETWORK;
 
 	int c = 0;
 	const struct option longopts[] = {
@@ -140,6 +147,7 @@ int main(int argc, char *argv[])
 		{ "key", required_argument, NULL, 'k' },
 		{ "simple", no_argument, NULL, 's' },
 		{ "xml", no_argument, NULL, 'x' },
+		{ "version", no_argument, NULL, 'v' },
 		{ NULL, 0, NULL, 0}
 	};
 
@@ -147,7 +155,7 @@ int main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 #endif
 
-	while ((c = getopt_long(argc, argv, "dhu:nq:k:sx", longopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "dhu:nq:k:sxv", longopts, NULL)) != -1) {
 		switch (c) {
 		case 'd':
 			idevice_set_debug_level(1);
@@ -158,11 +166,10 @@ int main(int argc, char *argv[])
 				print_usage(argc, argv, 1);
 				return 2;
 			}
-			free(udid);
-			udid = strdup(optarg);
+			udid = optarg;
 			break;
 		case 'n':
-			lookup_opts |= IDEVICE_LOOKUP_PREFER_NETWORK;
+			use_network = 1;
 			break;
 		case 'q':
 			if (!*optarg) {
@@ -170,8 +177,7 @@ int main(int argc, char *argv[])
 				print_usage(argc, argv, 1);
 				return 2;
 			}
-			free(domain);
-			domain = strdup(optarg);
+			domain = optarg;
 			break;
 		case 'k':
 			if (!*optarg) {
@@ -179,8 +185,7 @@ int main(int argc, char *argv[])
 				print_usage(argc, argv, 1);
 				return 2;
 			}
-			free(key);
-			key = strdup(optarg);
+			key = optarg;
 			break;
 		case 'x':
 			format = FORMAT_XML;
@@ -191,6 +196,9 @@ int main(int argc, char *argv[])
 		case 'h':
 			print_usage(argc, argv, 0);
 			return 0;
+		case 'v':
+			printf("%s %s\n", TOOL_NAME, PACKAGE_VERSION);
+			return 0;
 		default:
 			print_usage(argc, argv, 1);
 			return 2;
@@ -200,7 +208,7 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	ret = idevice_new_with_options(&device, udid, lookup_opts);
+	ret = idevice_new_with_options(&device, udid, (use_network) ? IDEVICE_LOOKUP_NETWORK : IDEVICE_LOOKUP_USBMUX);
 	if (ret != IDEVICE_E_SUCCESS) {
 		if (udid) {
 			printf("ERROR: Device %s not found!\n", udid);
@@ -211,8 +219,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (LOCKDOWN_E_SUCCESS != (ldret = simple ?
-			lockdownd_client_new(device, &client, "ideviceinfo"):
-			lockdownd_client_new_with_handshake(device, &client, "ideviceinfo"))) {
+			lockdownd_client_new(device, &client, TOOL_NAME):
+			lockdownd_client_new_with_handshake(device, &client, TOOL_NAME))) {
 		fprintf(stderr, "ERROR: Could not connect to lockdownd: %s (%d)\n", lockdownd_strerror(ldret), ldret);
 		idevice_free(device);
 		return -1;
@@ -244,8 +252,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (domain != NULL)
-		free(domain);
 	lockdownd_client_free(client);
 	idevice_free(device);
 

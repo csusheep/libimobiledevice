@@ -169,9 +169,8 @@ service_error_t service_enable_ssl(service_client_t client);
 service_error_t service_disable_ssl(service_client_t client);
 
 /**
- * Disable SSL for the given service client silently.
- * like service_disable_ssl, but without the shutdown ALERT TLS record sent.
- * 
+ * Disable SSL for the given service client without sending SSL terminate messages.
+ *
  * @param client The connected service client for that SSL should be disabled.
  *
  * @return SERVICE_E_SUCCESS on success,
@@ -179,6 +178,19 @@ service_error_t service_disable_ssl(service_client_t client);
  *     NULL, or SERVICE_E_UNKNOWN_ERROR otherwise.
  */
 service_error_t service_disable_ssl_silently(service_client_t client);
+
+
+/**
+ * Disable SSL for the given service client without sending SSL terminate messages.
+ *
+ * @param client The connected service client for that SSL should be disabled.
+ *
+ * @return SERVICE_E_SUCCESS on success,
+ *     SERVICE_E_INVALID_ARG if client or client->connection is
+ *     NULL, or SERVICE_E_UNKNOWN_ERROR otherwise.
+ */
+service_error_t service_disable_bypass_ssl(service_client_t client, uint8_t sslBypass);
+
 
 #ifdef __cplusplus
 }

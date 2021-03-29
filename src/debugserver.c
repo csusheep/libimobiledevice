@@ -55,6 +55,8 @@ static debugserver_error_t debugserver_error(service_error_t err)
 			return DEBUGSERVER_E_MUX_ERROR;
 		case SERVICE_E_SSL_ERROR:
 			return DEBUGSERVER_E_SSL_ERROR;
+		case SERVICE_E_TIMEOUT:
+			return DEBUGSERVER_E_TIMEOUT;
 		default:
 			break;
 	}
@@ -78,7 +80,10 @@ LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_new(idevice_t device
 		debug_info("Creating base service client failed. Error: %i", ret);
 		return ret;
 	}
-	service_disable_ssl(parent);
+
+	if (service->identifier && (strcmp(service->identifier, DEBUGSERVER_SECURE_SERVICE_NAME) != 0)) {
+		service_disable_bypass_ssl(parent, 1);
+	}
 
 	debugserver_client_t client_loc = (debugserver_client_t) malloc(sizeof(struct debugserver_client_private));
 	client_loc->parent = parent;
@@ -93,7 +98,11 @@ LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_new(idevice_t device
 LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_start_service(idevice_t device, debugserver_client_t * client, const char* label)
 {
 	debugserver_error_t err = DEBUGSERVER_E_UNKNOWN_ERROR;
-	service_client_factory_start_service(device, DEBUGSERVER_SERVICE_NAME, (void**)client, label, SERVICE_CONSTRUCTOR(debugserver_client_new), &err);
+	service_client_factory_start_service(device, DEBUGSERVER_SECURE_SERVICE_NAME, (void**)client, label, SERVICE_CONSTRUCTOR(debugserver_client_new), &err);
+	if (err != DEBUGSERVER_E_SUCCESS) {
+		err = DEBUGSERVER_E_UNKNOWN_ERROR;
+		service_client_factory_start_service(device, DEBUGSERVER_SERVICE_NAME, (void**)client, label, SERVICE_CONSTRUCTOR(debugserver_client_new), &err);
+	}
 	return err;
 }
 
@@ -147,7 +156,7 @@ LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_receive_with_timeout
 		*received = (uint32_t)bytes;
 	}
 
-	return res;
+	return (bytes > 0) ? DEBUGSERVER_E_SUCCESS : res;
 }
 
 LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_receive(debugserver_client_t client, char* data, uint32_t size, uint32_t *received)
@@ -597,8 +606,8 @@ LIBIMOBILEDEVICE_API debugserver_error_t debugserver_client_set_argv(debugserver
 		char *p = m;
 		char *q = (char*)argv[i];
 		while (*q) {
-			*p++ = debugserver_int2hex(*q >> 4);
-			*p++ = debugserver_int2hex(*q & 0xf);
+			*p++ = DEBUGSERVER_HEX_ENCODE_FIRST_BYTE(*q);
+			*p++ = DEBUGSERVER_HEX_ENCODE_SECOND_BYTE(*q);
 			q++;
 		}
 
